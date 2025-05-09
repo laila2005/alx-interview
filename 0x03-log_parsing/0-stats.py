@@ -1,49 +1,50 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 """
-Reads from stdin line by line and computes metrics.
+log parsing
 """
 
 import sys
 import re
-from collections import defaultdict
 
-# Define expected status codes
-VALID_STATUS_CODES = {'200', '301', '400', '401', '403', '404', '405', '500'}
 
-# Regex pattern to match valid log lines
-log_pattern = re.compile(
-    r'^\d+\.\d+\.\d+\.\d+ - \[.*?\] "GET /projects/260 HTTP/1\.1" (\d{3}) (\d+)$'
-)
+def output(log: dict) -> None:
+    """
+    helper function to display stats
+    """
+    print("File size: {}".format(log["file_size"]))
+    for code in sorted(log["code_frequency"]):
+        if log["code_frequency"][code]:
+            print("{}: {}".format(code, log["code_frequency"][code]))
 
-# Initialize counters
-total_size = 0
-status_counts = defaultdict(int)
-line_count = 0
 
-def print_stats():
-    """Print the accumulated stats."""
-    print(f"File size: {total_size}")
-    for code in sorted(status_counts.keys()):
-        print(f"{code}: {status_counts[code]}")
+if __name__ == "__main__":
+    regex = re.compile(
+    r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3} - \[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d+\] "GET /projects/260 HTTP/1.1" (.{3}) (\d+)')  # nopep8
 
-try:
-    for line in sys.stdin:
-        match = log_pattern.match(line.strip())
-        if match:
-            status_code, file_size = match.groups()
-            try:
-                total_size += int(file_size)
-                if status_code in VALID_STATUS_CODES:
-                    status_counts[status_code] += 1
-            except ValueError:
-                continue  # skip lines with non-integer file size
+    line_count = 0
+    log = {}
+    log["file_size"] = 0
+    log["code_frequency"] = {
+        str(code): 0 for code in [
+            200, 301, 400, 401, 403, 404, 405, 500]}
 
-        line_count += 1
-        if line_count % 10 == 0:
-            print_stats()
+    try:
+        for line in sys.stdin:
+            line = line.strip()
+            match = regex.fullmatch(line)
+            if (match):
+                line_count += 1
+                code = match.group(1)
+                file_size = int(match.group(2))
 
-except KeyboardInterrupt:
-    print_stats()
-    raise
+                # File size
+                log["file_size"] += file_size
 
-print_stats()
+                # status code
+                if (code.isdecimal()):
+                    log["code_frequency"][code] += 1
+
+                if (line_count % 10 == 0):
+                    output(log)
+    finally:
+        output(log)
