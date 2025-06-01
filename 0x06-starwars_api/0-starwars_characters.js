@@ -12,11 +12,11 @@ request(url, (err, res, body) => {
 
   const characters = JSON.parse(body).characters;
 
-  characters.forEach(url => {
-    request(url, (err, res, body) => {
+  for (let i = 0; i < characters.length; i++) {
+    request(characters[i], (err, res, body) => {
       if (!err) {
         console.log(JSON.parse(body).name);
       }
     });
-  });
+  }
 });
